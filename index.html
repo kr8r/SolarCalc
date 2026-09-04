@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Off-Grid Solar Calculator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="calculator-container">
+    <div class="header-bar">
+      <h2>Advanced Solar System Calculator</h2>
+      <button type="button" id="darkModeToggle" class="btn-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    </div>
+    
+    <div class="calculator-grid">
+      
+      <!-- LEFT COLUMN: Input Sections -->
+      <div class="input-section">
+        
+        <!-- Solar Array Specs -->
+        <div id="sec-array" class="input-group">
+          <h3>Solar Array Specs</h3>
+          
+          <label>Panel Rated Watts: 
+            <input type="number" id="panelWatts" value="400" min="0">
+          </label>
+          
+          <label>
+            <span>Open Circuit Voltage (Voc) <span class="tooltip-icon" title="Maximum voltage output when no load is connected. Used for MPPT controller sizing.">?</span>:</span>
+            <input type="number" id="panelVoc" value="49.5" step="0.1" min="0">
+          </label>
+          
+          <label>
+            <span>Short Circuit Current (Isc) <span class="tooltip-icon" title="Maximum current from solar panels. Used to size wire gauge and charge controller amps.">?</span>:</span>
+            <input type="number" id="panelIsc" value="10.5" step="0.1" min="0">
+          </label>
+
+          <div class="temp-header">
+            <span>Temperature Correction</span>
+            <button type="button" id="tempUnitToggle" class="btn-toggle" onclick="toggleTempUnit()">Switch to °C</button>
+          </div>
+          
+          <label>
+            <span>Temp Coeff of Voc (%/<span class="temp-unit-label">°F</span>) <span class="tooltip-icon" title="Rate at which voltage increases as temperature drops. Typically -0.16%/°F (-0.30%/°C).">?</span>:</span>
+            <input type="number" id="tempCoeff" value="-0.16" step="0.01" max="0">
+          </label>
+
+          <label>Lowest Temp Expected (<span class="temp-unit-label">°F</span>): 
+            <input type="number" id="minTemp" value="14">
+          </label>
+
+          <hr class="divider">
+
+          <label>Panels in Series per String: 
+            <input type="number" id="panelsSeries" value="2" min="1">
+          </label>
+          
+          <label>Parallel Strings: 
+            <input type="number" id="parallelStrings" value="2" min="1">
+          </label>
+          
+          <label>Peak Sun Hours/Day: 
+            <input type="number" id="sunHours" value="5" step="0.1" min="0">
+          </label>
+        </div>
+
+        <!-- Hardware Limits -->
+        <div id="sec-hardware" class="input-group">
+          <h3>Hardware Limits (MPPT & Inverter)</h3>
+          
+          <label>MPPT Max Voltage (V): 
+            <input type="number" id="mpptMaxVolts" value="100" min="0">
+          </label>
+          
+          <label>MPPT Max Current (A): 
+            <input type="number" id="mpptMaxAmps" value="30" min="0">
+          </label>
+
+          <label>Inverter Continuous Rating (W): 
+            <input type="number" id="inverterWatts" value="2000" min="0">
+          </label>
+
+          <label>Inverter Peak Surge Rating (W): 
+            <input type="number" id="inverterSurge" value="4000" min="0">
+          </label>
+        </div>
+
+        <!-- Battery Bank -->
+        <div id="sec-battery" class="input-group">
+          <h3>Battery Bank & System</h3>
+          <label>System Voltage (V): 
+            <input type="number" id="batVolts" value="24" min="0">
+          </label>
+          
+          <label>Capacity (Ah): 
+            <input type="number" id="batAh" value="200" min="0">
+          </label>
+          
+          <label>
+            <span>Depth of Discharge (DoD %) <span class="tooltip-icon" title="Safe limit to drain battery. LiFePO4 is typically 80%-90%, Lead-Acid is 50%.">?</span>:</span>
+            <input type="number" id="batDoD" value="80" max="100" min="0">
+          </label>
+
+          <label>System Efficiency (%): 
+            <input type="number" id="efficiency" value="85" max="100" min="0">
+          </label>
+        </div>
+
+        <!-- Wiring -->
+        <div id="sec-wiring" class="input-group">
+          <h3>Solar-to-Controller Wiring</h3>
+          <label>One-Way Distance (ft): 
+            <input type="number" id="wireDistance" value="25" min="0">
+          </label>
+          
+          <label>Wire Size (AWG): 
+            <select id="wireGauge">
+              <option value="14">14 AWG</option>
+              <option value="12">12 AWG</option>
+              <option value="10" selected>10 AWG</option>
+              <option value="8">8 AWG</option>
+              <option value="6">6 AWG</option>
+              <option value="4">4 AWG</option>
+              <option value="2">2 AWG</option>
+              <option value="0">1/0 AWG</option>
+              <option value="00">2/0 AWG</option>
+              <option value="0000">4/0 AWG</option>
+            </select>
+          </label>
+          
+          <label>Max Voltage Drop Target (%): 
+            <input type="number" id="maxDropTarget" value="3" step="0.5" min="0">
+          </label>
+        </div>
+
+        <!-- Daily Load Profile -->
+        <div id="sec-loads" class="input-group">
+          <h3>Daily Load Profile</h3>
+          
+          <div class="preset-selector">
+            <label for="appliancePresets">Add Preset Appliance:</label>
+            <select id="appliancePresets" onchange="addPresetAppliance(this)">
+              <option value="">-- Choose Preset --</option>
+              <option value="Refrigerator|150|12|2|AC">AC Refrigerator (150W running, 2x surge)</option>
+              <option value="12V RV Fridge|45|12|1.2|DC">DC 12V Fridge (45W running)</option>
+              <option value="LED Lights|30|5|1|DC">DC LED Lights (30W total)</option>
+              <option value="Laptop Charger|65|8|1|AC">AC Laptop Charger (65W)</option>
+              <option value="Microwave|1200|0.5|1.5|AC">AC Microwave (1200W, 1.5x surge)</option>
+              <option value="Water Pump|800|1|3|AC">AC Well Pump (800W, 3x surge)</option>
+              <option value="12V Diesel Heater|30|8|3|DC">DC Diesel Heater (30W running, 3x startup)</option>
+            </select>
+          </div>
+
+          <div class="appliance-header">
+            <span>Appliance Name</span>
+            <span>Watts</span>
+            <span>Hrs/Day</span>
+            <span>Surge</span>
+            <span>Type</span>
+            <span></span>
+          </div>
+
+          <div id="applianceList"></div>
+
+          <button type="button" class="btn-secondary" onclick="addApplianceRow()">+ Add Blank Appliance</button>
+        </div>
+
+        <div class="button-group">
+          <button type="button" class="btn-primary" onclick="calculateSystem()">Calculate Complete System</button>
+          <button type="button" class="btn-reset" onclick="resetSystemState()">Reset Inputs</button>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Interactive Diagram & Analysis Overview -->
+      <div class="analysis-section">
+        
+        <!-- Interactive System Architecture Visualizer -->
+        <div id="diagramCard" class="diagram-card" style="display:none;">
+          <h3>Interactive System Diagram</h3>
+          <p class="diagram-hint">Click any component to jump directly to its input settings.</p>
+          <div class="svg-container">
+            <svg id="solarSvg" viewBox="0 0 600 210" xmlns="http://www.w3.org/2000/svg">
+              <!-- Animated Wiring Paths -->
+              <path d="M 110 70 L 190 70" class="wire wire-dc" />
+              <path d="M 250 70 L 330 70" class="wire wire-dc" />
+              <path d="M 390 70 L 470 70" class="wire wire-ac" />
+              <path d="M 360 95 L 360 155 L 470 155" class="wire wire-dc" />
+
+              <!-- Solar Array Block -->
+              <g class="interactive-node" onclick="scrollToSection('sec-array')">
+                <rect x="10" y="30" width="100" height="80" rx="6" class="node-box" />
+                <text x="60" y="52" class="node-title">Solar Array</text>
+                <text x="60" y="70" class="node-sub" id="svgArrayPower">0 W</text>
+                <text x="60" y="85" class="node-sub" id="svgArrayVolts">0 V</text>
+              </g>
+
+              <!-- MPPT Controller Block -->
+              <g class="interactive-node" onclick="scrollToSection('sec-hardware')">
+                <rect x="190" y="30" width="60" height="80" rx="6" id="svgMpptBox" class="node-box" />
+                <text x="220" y="55" class="node-title">MPPT</text>
+                <text x="220" y="75" class="node-sub" id="svgMpptStatus">OK</text>
+              </g>
+
+              <!-- Battery Bank Block -->
+              <g class="interactive-node" onclick="scrollToSection('sec-battery')">
+                <rect x="330" y="30" width="60" height="80" rx="6" class="node-box" />
+                <text x="360" y="50" class="node-title">Battery</text>
+                <text x="360" y="68" class="node-sub" id="svgBatVolts">24V</text>
+                <text x="360" y="83" class="node-sub" id="svgBatCap">0 Wh</text>
+              </g>
+
+              <!-- Inverter Block -->
+              <g class="interactive-node" onclick="scrollToSection('sec-hardware')">
+                <rect x="470" y="30" width="120" height="80" rx="6" id="svgInverterBox" class="node-box" />
+                <text x="530" y="50" class="node-title">Inverter</text>
+                <text x="530" y="68" class="node-sub" id="svgAcLoad">0 W AC</text>
+                <text x="530" y="83" class="node-sub" id="svgInverterStatus">OK</text>
+              </g>
+
+              <!-- DC Loads Block -->
+              <g class="interactive-node" onclick="scrollToSection('sec-loads')">
+                <rect x="470" y="130" width="120" height="50" rx="6" class="node-box" />
+                <text x="530" y="152" class="node-title">DC Loads</text>
+                <text x="530" y="167" class="node-sub" id="svgDcLoad">0 W DC</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Numerical & Status Results Overview -->
+        <div id="results" class="results-box" style="display:none;">
+          <h3>System Analysis Overview</h3>
+          
+          <h4>Array & MPPT Specs</h4>
+          <p><strong>Total Panels:</strong> <span id="resTotalPanels"></span></p>
+          <p><strong>Total Array Output:</strong> <span id="resArrayWatts"></span> W</p>
+          <p><strong>Array Voc Voltage (STC):</strong> <span id="resArrayVoc"></span> V <span id="resVocCheck"></span></p>
+          <p><strong>Max Cold Array Voc (<span id="resColdTempLabel"></span><span class="temp-unit-label">°F</span>):</strong> <span id="resArrayVocCold"></span> V <span id="resColdVocCheck"></span></p>
+          <p><strong>Array Isc Current:</strong> <span id="resArrayIsc"></span> A <span id="resIscCheck"></span></p>
+          
+          <h4>Inverter Load Capabilities (AC Loads Only)</h4>
+          <p><strong>Total AC Running Load:</strong> <span id="resRunningWatts"></span> W <span id="resInverterCheck"></span></p>
+          <p><strong>Peak AC Surge Load:</strong> <span id="resSurgeWatts"></span> W <span id="resSurgeCheck"></span></p>
+
+          <h4>Generation vs Demand</h4>
+          <p><strong>Est. Daily Generation:</strong> <span id="resDailyYield"></span> Wh/day</p>
+          <p><strong>Est. Daily Load Consumption:</strong> <span id="resDailyLoad"></span></p>
+          <p><strong>Energy Balance:</strong> <span id="resEnergyBalance"></span></p>
+
+          <h4>Battery Performance & Storage Visual</h4>
+          <p><strong>Usable Capacity:</strong> <span id="resBatWh"></span> Wh</p>
+          
+          <div class="progress-bar-container">
+            <div class="progress-bar-label">
+              <span>Daily Load Coverage vs Storage:</span>
+              <span id="resStorageUsagePercent">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="batteryProgressBar" class="progress-fill"></div>
+            </div>
+          </div>
+
+          <p><strong>Est. Solar Charge Time (0-100%):</strong> <span id="resChargeTime"></span> hours</p>
+          <p><strong>Days of Autonomy:</strong> <span id="resAutonomy"></span> days</p>
+
+          <h4>Wiring Metrics</h4>
+          <p><strong>Voltage Drop:</strong> <span id="resVoltsDrop"></span> V (<span id="resPercentDrop"></span>%) <span id="resDropStatus"></span></p>
+          <p><strong>Power Lost in Cable:</strong> <span id="resPowerLoss"></span> W</p>
+        </div>
+        
+        <div id="placeholderText" class="placeholder-box">
+          <p>Configure parameters and select <strong>Calculate Complete System</strong> to process your system architecture metrics.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ROW: Mathematical Derivations -->
+    <div id="derivationSection" class="derivation-box" style="display:none;">
+      <h3>Mathematical Derivations & Formulas</h3>
+      <div class="formula-grid">
+        <div class="formula-card">
+          <h4>1. Temperature-Corrected $V_{oc\_cold}$</h4>
+          <p><strong>Formula:</strong> $V_{oc\_cold} = V_{oc\_string} \times \left(1 + \left(\Delta T \times \frac{\text{Coeff}}{100}\right)\right)$</p>
+          <p><strong>Calculation:</strong> <span id="calcColdVoc"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>2. String & Array Current/Voltage</h4>
+          <p><strong>Formula:</strong> $V_{oc} = \text{Series} \times V_{oc\_panel}$, $I_{sc} = \text{Parallel} \times I_{sc\_panel}$</p>
+          <p><strong>Calculation:</strong> <span id="calcVocIsc"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>3. AC Load vs Inverter Limits</h4>
+          <p><strong>Formula:</strong> $\sum \text{Running AC W}$ vs $\sum (\text{AC W} \times \text{Surge Multiplier})$</p>
+          <p><strong>Calculation:</strong> <span id="calcInverter"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>4. Daily Load & Inversion Penalty</h4>
+          <p><strong>Formula:</strong> $\frac{\text{AC Wh}}{0.90 \text{ Inversion Eff.}} + \text{DC Wh}$</p>
+          <p><strong>Calculation:</strong> <span id="calcLoadSplit"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>5. Usable Battery Storage</h4>
+          <p><strong>Formula:</strong> $(\text{Volts} \times \text{Ah}) \times \text{DoD}$</p>
+          <p><strong>Calculation:</strong> <span id="calcBat"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>6. Cable Voltage Drop</h4>
+          <p><strong>Formula:</strong> $V_{\text{drop}} = I_{\text{array}} \times \left(\frac{2 \times \text{Distance}}{1000} \times R_{\text{gauge}}\right)$</p>
+          <p><strong>Calculation:</strong> <span id="calcWireDrop"></span></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
