@@ -62,13 +62,27 @@
 
           <hr class="divider">
 
-          <!-- NEW GEOGRAPHIC & GEOMETRY INPUTS -->
+          <!-- ZIP CODE & CITY SEARCH ENGINE -->
+          <div class="search-box-container">
+            <label for="locationSearch">
+              <span>Location Search (ZIP or City) <span class="tooltip-icon" data-tooltip="Enter a 5-digit US ZIP Code or major city name to automatically set local latitude and solar irradiance hours.">?</span>:</span>
+            </label>
+            <div class="search-input-wrapper">
+              <input type="text" id="locationSearch" placeholder="e.g. 84532, Moab, Denver" onkeyup="handleLocationSearch(event)">
+              <button type="button" class="btn-search" onclick="lookupLocation()">Find</button>
+            </div>
+            <p id="searchFeedback" class="search-feedback"></p>
+          </div>
+
           <div class="preset-selector">
-            <label for="locationPresets">Location Preset:</label>
+            <label for="locationPresets">Or Choose Preset Hub:</label>
             <select id="locationPresets" onchange="applyLocationPreset(this)">
-              <option value="custom">-- Custom Latitude --</option>
+              <option value="custom">-- Choose Region / Off-Grid Hub --</option>
               <option value="25.8|5.5" selected>Miami, FL (25.8°N - 5.5 Sun Hrs)</option>
+              <option value="33.7|6.0">Quartzsite, AZ (33.7°N - 6.0 Sun Hrs)</option>
+              <option value="38.5|5.6">Moab, UT (38.5°N - 5.6 Sun Hrs)</option>
               <option value="39.7|5.2">Denver, CO (39.7°N - 5.2 Sun Hrs)</option>
+              <option value="44.4|4.5">Yellowstone, WY (44.4°N - 4.5 Sun Hrs)</option>
               <option value="47.6|3.7">Seattle, WA (47.6°N - 3.7 Sun Hrs)</option>
               <option value="61.2|3.0">Anchorage, AK (61.2°N - 3.0 Sun Hrs)</option>
             </select>

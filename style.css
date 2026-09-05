@@ -117,6 +117,49 @@ input, select {
   color: var(--text-color);
 }
 
+/* Location Search Input Component */
+.search-box-container {
+  margin-bottom: 12px;
+  background-color: var(--preset-bg);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.search-input-wrapper input {
+  flex: 1;
+  width: auto !important;
+}
+
+.btn-search {
+  background-color: #0288d1;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-search:hover {
+  background-color: #01579b;
+}
+
+.search-feedback {
+  margin: 6px 0 0 0;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.search-feedback.success { color: #2e7d32; }
+.search-feedback.error { color: #d32f2f; }
+
 /* Pure CSS Floating Tooltips */
 .tooltip-icon {
   position: relative;
@@ -553,6 +596,7 @@ body.dark-mode .node-box.warn {
   .header-bar button, 
   .button-group, 
   .preset-selector, 
+  .search-box-container,
   .btn-remove, 
   .btn-secondary, 
   .diagram-hint, 

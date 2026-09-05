@@ -5,6 +5,30 @@ const NEC_COPPER_RESISTANCE = {
   "00": 0.096, "0000": 0.060
 };
 
+// Built-in US ZIP Code / City Geographic Insolation Database
+const LOCATION_DATABASE = [
+  { keywords: ["84532", "moab", "utah"], name: "Moab, UT", lat: 38.5, sun: 5.6 },
+  { keywords: ["85346", "quartzsite", "arizona"], name: "Quartzsite, AZ", lat: 33.7, sun: 6.0 },
+  { keywords: ["33101", "miami", "florida"], name: "Miami, FL", lat: 25.8, sun: 5.5 },
+  { keywords: ["80202", "denver", "colorado"], name: "Denver, CO", lat: 39.7, sun: 5.2 },
+  { keywords: ["82190", "yellowstone", "wyoming"], name: "Yellowstone, WY", lat: 44.4, sun: 4.5 },
+  { keywords: ["98101", "seattle", "washington"], name: "Seattle, WA", lat: 47.6, sun: 3.7 },
+  { keywords: ["99501", "anchorage", "alaska"], name: "Anchorage, AK", lat: 61.2, sun: 3.0 },
+  { keywords: ["90210", "los angeles", "beverly hills"], name: "Los Angeles, CA", lat: 34.1, sun: 5.6 },
+  { keywords: ["92101", "san diego"], name: "San Diego, CA", lat: 32.7, sun: 5.7 },
+  { keywords: ["89101", "las vegas", "nevada"], name: "Las Vegas, NV", lat: 36.2, sun: 6.1 },
+  { keywords: ["85001", "phoenix"], name: "Phoenix, AZ", lat: 33.4, sun: 6.2 },
+  { keywords: ["87501", "santa fe", "new mexico"], name: "Santa Fe, NM", lat: 35.7, sun: 5.8 },
+  { keywords: ["97201", "portland", "oregon"], name: "Portland, OR", lat: 45.5, sun: 3.9 },
+  { keywords: ["83701", "boise", "idaho"], name: "Boise, ID", lat: 43.6, sun: 4.8 },
+  { keywords: ["59715", "bozeman", "montana"], name: "Bozeman, MT", lat: 45.7, sun: 4.4 },
+  { keywords: ["10001", "new york", "nyc"], name: "New York, NY", lat: 40.7, sun: 4.2 },
+  { keywords: ["60601", "chicago", "illinois"], name: "Chicago, IL", lat: 41.9, sun: 4.0 },
+  { keywords: ["30301", "atlanta", "georgia"], name: "Atlanta, GA", lat: 33.7, sun: 4.8 },
+  { keywords: ["75201", "dallas", "texas"], name: "Dallas, TX", lat: 32.8, sun: 5.1 },
+  { keywords: ["96813", "honolulu", "hawaii"], name: "Honolulu, HI", lat: 21.3, sun: 5.8 }
+];
+
 let currentTempUnit = 'F'; // 'F' or 'C'
 let isDarkMode = false;
 
@@ -19,6 +43,60 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function handleLocationSearch(event) {
+  if (event.key === 'Enter') {
+    lookupLocation();
+  }
+}
+
+function lookupLocation() {
+  const query = document.getElementById('locationSearch').value.trim().toLowerCase();
+  const feedbackEl = document.getElementById('searchFeedback');
+
+  if (!query) {
+    feedbackEl.textContent = "Please enter a ZIP code or city name.";
+    feedbackEl.className = "search-feedback error";
+    return;
+  }
+
+  const match = LOCATION_DATABASE.find(item => 
+    item.keywords.some(kw => query.includes(kw) || kw.includes(query))
+  );
+
+  if (match) {
+    document.getElementById('latitude').value = match.lat;
+    document.getElementById('sunHours').value = match.sun;
+    document.getElementById('locationPresets').value = 'custom';
+
+    feedbackEl.textContent = `Found: ${match.name} (${match.lat}°N, ${match.sun} Sun Hrs/Day)`;
+    feedbackEl.className = "search-feedback success";
+    calculateSystem();
+  } else {
+    // Basic regional ZIP code prefix estimation fallback
+    const zipNum = parseInt(query, 10);
+    if (!isNaN(zipNum) && query.length === 5) {
+      let estLat = 38.0;
+      let estSun = 4.8;
+
+      if (zipNum >= 90000 && zipNum <= 96199) { estLat = 36.0; estSun = 5.5; } // CA
+      else if (zipNum >= 85000 && zipNum <= 86599) { estLat = 34.0; estSun = 6.0; } // AZ
+      else if (zipNum >= 98000 && zipNum <= 99499) { estLat = 47.5; estSun = 3.8; } // WA
+      else if (zipNum >= 75000 && zipNum <= 79999) { estLat = 31.0; estSun = 5.2; } // TX
+      else if (zipNum >= 32000 && zipNum <= 34999) { estLat = 28.0; estSun = 5.4; } // FL
+
+      document.getElementById('latitude').value = estLat;
+      document.getElementById('sunHours').value = estSun;
+
+      feedbackEl.textContent = `Regional ZIP Match: Est. ${estLat}°N, ${estSun} Sun Hrs/Day`;
+      feedbackEl.className = "search-feedback success";
+      calculateSystem();
+    } else {
+      feedbackEl.textContent = "Location not found. Try a major city or 5-digit US ZIP.";
+      feedbackEl.className = "search-feedback error";
+    }
+  }
+}
+
 function applyLocationPreset(selectEl) {
   const val = selectEl.value;
   if (val === 'custom') return;
@@ -26,6 +104,8 @@ function applyLocationPreset(selectEl) {
   const [lat, sun] = val.split('|');
   document.getElementById('latitude').value = lat;
   document.getElementById('sunHours').value = sun;
+  document.getElementById('locationSearch').value = '';
+  document.getElementById('searchFeedback').textContent = '';
   calculateSystem();
 }
 
@@ -210,7 +290,7 @@ function loadSystemState() {
     if (state.currentTempUnit && state.currentTempUnit !== currentTempUnit) {
       currentTempUnit = state.currentTempUnit;
       const toggleBtn = document.getElementById('tempUnitToggle');
-      if (toggleBtn) toggleBtn.textContent = currentTempUnit === 'F' ? 'Switch to °C' : 'Switch to °F';
+      if (toggleBtn) toggleBtn.textContent = currentTempUnit === 'F' ? 'Switch to °F' : 'Switch to °F';
       document.querySelectorAll('.temp-unit-label').forEach(el => {
         el.textContent = `°${currentTempUnit}`;
       });
@@ -253,23 +333,20 @@ function resetSystemState() {
 function calculateSolarDerating(latDeg, tiltDeg, azimuthDeg, season) {
   const latRad = latDeg * (Math.PI / 180);
   const tiltRad = tiltDeg * (Math.PI / 180);
-  const aziRad = (azimuthDeg - 180) * (Math.PI / 180); // Deviation from South
+  const aziRad = (azimuthDeg - 180) * (Math.PI / 180);
 
-  // Solar Declination Angle (delta) by Season
   let declinationDeg = 0;
-  if (season === 'summer') declinationDeg = 23.45; // Summer Solstice
-  else if (season === 'winter') declinationDeg = -23.45; // Winter Solstice
-  else declinationDeg = 0; // Equinox
+  if (season === 'summer') declinationDeg = 23.45;
+  else if (season === 'winter') declinationDeg = -23.45;
+  else declinationDeg = 0;
 
   const decRad = declinationDeg * (Math.PI / 180);
 
-  // Solar Elevation at Solar Noon (Hour Angle omega = 0)
   const sinSolarNoonAlt = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad);
   const noonAltRad = Math.asin(Math.max(-1, Math.min(1, sinSolarNoonAlt)));
 
-  if (noonAltRad <= 0) return 0.05; // polar night or sub-horizon sun
+  if (noonAltRad <= 0) return 0.05;
 
-  // Angle of Incidence (cos theta) at Solar Noon
   const cosIncidence = Math.sin(noonAltRad) * Math.cos(tiltRad) + 
                        Math.cos(noonAltRad) * Math.sin(tiltRad) * Math.cos(aziRad);
 
@@ -527,7 +604,6 @@ function calculateSystem() {
   const totalPanels = series * parallel;
   const nameplateArrayWatts = totalPanels * panelWatts;
   
-  // Calculate Geometric Solar Incidence Derating
   const derateFactor = calculateSolarDerating(latDeg, tiltDeg, azimuthDeg, season);
   const effectiveArrayWatts = nameplateArrayWatts * derateFactor;
   const effectiveSunHours = baseSunHours * derateFactor;
