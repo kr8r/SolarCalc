@@ -9,16 +9,18 @@
 <body>
   <div class="calculator-container">
     <div class="header-bar">
-      24-Hour Battery SoC & Power Graph
+      <h2>Advanced Solar System Calculator</h2>
       <button type="button" id="darkModeToggle" class="btn-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
     </div>
     
     <div class="calculator-grid">
       
+      <!-- LEFT COLUMN: Input Sections -->
       <div class="input-section">
         
+        <!-- Solar Array Specs & Geography -->
         <div id="sec-array" class="input-group">
-          <h3>Solar Array Specs</h3>
+          <h3>Solar Array Specs & Geometry</h3>
           
           <label>Panel Rated Watts: 
             <input type="number" id="panelWatts" value="400" min="0">
@@ -57,13 +59,59 @@
           <label>Parallel Strings: 
             <input type="number" id="parallelStrings" value="2" min="1">
           </label>
+
+          <hr class="divider">
+
+          <!-- NEW GEOGRAPHIC & GEOMETRY INPUTS -->
+          <div class="preset-selector">
+            <label for="locationPresets">Location Preset:</label>
+            <select id="locationPresets" onchange="applyLocationPreset(this)">
+              <option value="custom">-- Custom Latitude --</option>
+              <option value="25.8|5.5" selected>Miami, FL (25.8°N - 5.5 Sun Hrs)</option>
+              <option value="39.7|5.2">Denver, CO (39.7°N - 5.2 Sun Hrs)</option>
+              <option value="47.6|3.7">Seattle, WA (47.6°N - 3.7 Sun Hrs)</option>
+              <option value="61.2|3.0">Anchorage, AK (61.2°N - 3.0 Sun Hrs)</option>
+            </select>
+          </div>
+
+          <label>
+            <span>Site Latitude (°N) <span class="tooltip-icon" data-tooltip="Latitude: Geographic position north/south of equator. Higher latitudes experience steeper sun angle changes between summer and winter.">?</span>:</span>
+            <input type="number" id="latitude" value="25.8" step="0.1" min="0" max="90">
+          </label>
+
+          <label>
+            <span>Panel Tilt Angle (°) <span class="tooltip-icon" data-tooltip="Panel Tilt: Angle relative to flat ground. 0° = Flat trailer roof mount. Tilting panels equal to latitude optimizes yearly solar capture.">?</span>:</span>
+            <input type="number" id="panelTilt" value="0" step="1" min="0" max="90">
+          </label>
+
+          <label>
+            <span>Panel Orientation (Azimuth) <span class="tooltip-icon" data-tooltip="Azimuth: Compass direction the panels face. 180° = True South (Ideal for Northern Hemisphere), 90° = East, 270° = West.">?</span>:</span>
+            <select id="panelAzimuth">
+              <option value="180" selected>180° (True South)</option>
+              <option value="135">135° (South-East)</option>
+              <option value="225">225° (South-West)</option>
+              <option value="90">90° (East)</option>
+              <option value="270">270° (West)</option>
+              <option value="0">0° (True North)</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Target Season Profile <span class="tooltip-icon" data-tooltip="Season Profile: Models seasonal sun declination shifts. Winter solstice causes steep power drops for flat panels at high latitudes.">?</span>:</span>
+            <select id="seasonProfile">
+              <option value="equinox">Equinox (Spring/Autumn)</option>
+              <option value="summer">Summer Solstice (Peak Sun Angle)</option>
+              <option value="winter" selected>Winter Solstice (Worst-Case Low Sun)</option>
+            </select>
+          </label>
           
           <label>
-            <span>Peak Sun Hours/Day <span class="tooltip-icon" data-tooltip="Peak Sun Hours: Number of hours per day when solar irradiance averages 1,000 Watts per square meter (equivalent to full midday sun).">?</span>:</span>
-            <input type="number" id="sunHours" value="5" step="0.1" min="0">
+            <span>Base Peak Sun Hours/Day <span class="tooltip-icon" data-tooltip="Peak Sun Hours: Baseline daily sun hours under optimal conditions before geographic geometric derating is applied.">?</span>:</span>
+            <input type="number" id="sunHours" value="5.5" step="0.1" min="0">
           </label>
         </div>
 
+        <!-- Hardware Limits -->
         <div id="sec-hardware" class="input-group">
           <h3>Hardware Limits (MPPT & Inverter)</h3>
           
@@ -88,6 +136,7 @@
           </label>
         </div>
 
+        <!-- Battery Bank -->
         <div id="sec-battery" class="input-group">
           <h3>Battery Bank & System</h3>
           <label>System Voltage (V): 
@@ -110,6 +159,7 @@
           </label>
         </div>
 
+        <!-- Wiring -->
         <div id="sec-wiring" class="input-group">
           <h3>Solar-to-Controller Wiring</h3>
           <label>One-Way Distance (ft): 
@@ -138,6 +188,7 @@
           </label>
         </div>
 
+        <!-- Daily Load Profile -->
         <div id="sec-loads" class="input-group">
           <h3>Daily Load Profile</h3>
           
@@ -175,8 +226,10 @@
         </div>
       </div>
 
+      <!-- RIGHT COLUMN: Interactive Diagram, Simulator & Analysis Overview -->
       <div class="analysis-section">
         
+        <!-- Interactive System Architecture Visualizer -->
         <div id="diagramCard" class="diagram-card" style="display:none;">
           <h3>Interactive System Diagram</h3>
           <p class="diagram-hint">Click any component to jump directly to its input settings.</p>
@@ -223,6 +276,7 @@
           </div>
         </div>
 
+        <!-- 24-HOUR SIMULATOR ENGINE & GRAPH -->
         <div id="sim24Card" class="sim24-card" style="display:none;">
           <h3>24-Hour Battery SoC & Power Graph</h3>
           <p class="sim24-hint">Hour-by-hour simulation comparing solar generation against hourly load draw.</p>
@@ -239,16 +293,17 @@
 
           <div class="sim24-metrics">
             <p><strong>Overnight SoC Dip (6:00 AM) <span class="tooltip-icon" data-tooltip="State-of-Charge (SoC): Percentage of usable battery energy remaining. Lowest SoC typically occurs at 6:00 AM directly before sunrise.">?</span>:</strong> <span id="sim24LowestSoc">100%</span></p>
-            <p><strong>Peak Solar Generation:</strong> <span id="sim24PeakWatts">0</span> W at 1:00 PM</p>
+            <p><strong>Geometrically Derated Peak Gen:</strong> <span id="sim24PeakWatts">0</span> W at 1:00 PM</p>
             <p><strong>24-Hour Cycle Status:</strong> <span id="sim24Status">--</span></p>
           </div>
         </div>
 
+        <!-- Weather & Autonomy Stress Test Simulation Card -->
         <div id="stressTestCard" class="stress-card" style="display:none;">
           <h3>Weather & Autonomy Stress Test</h3>
           
-          <label>Simulated Peak Sun Hours: <span id="sunHoursVal" class="slider-val">5.0 hrs</span>
-            <input type="range" id="simSunHours" min="0.5" max="8.0" step="0.5" value="5.0" oninput="updateStressTest()">
+          <label>Simulated Base Sun Hours: <span id="sunHoursVal" class="slider-val">5.5 hrs</span>
+            <input type="range" id="simSunHours" min="0.5" max="8.0" step="0.5" value="5.5" oninput="updateStressTest()">
           </label>
 
           <label>Consecutive Low-Solar Days: <span id="badDaysVal" class="slider-val">3 days</span>
@@ -256,19 +311,23 @@
           </label>
 
           <div class="stress-results">
-            <p><strong>Daily Solar Yield (Low Yield 20%):</strong> <span id="simDailyYield">0</span> Wh/day</p>
+            <p><strong>Derated Stormy Solar Yield (20% Yield):</strong> <span id="simDailyYield">0</span> Wh/day</p>
             <p><strong>Net Deficit per Low-Solar Day:</strong> <span id="simDailyDeficit">0</span> Wh/day</p>
             <p><strong>Usable SoC After Stormy Period <span class="tooltip-icon" data-tooltip="State-of-Charge (SoC): Remaining usable energy percentage inside the battery bank following consecutive overcast days.">?</span>:</strong> <span id="simFinalSoc">100%</span></p>
             <p><strong>Autonomy Status <span class="tooltip-icon" data-tooltip="Days of Autonomy: Number of full 24-hour days the system can run on battery power alone without any solar input.">?</span>:</strong> <span id="simStatus">--</span></p>
           </div>
         </div>
 
+        <!-- Numerical & Status Results Overview -->
         <div id="results" class="results-box" style="display:none;">
           <h3>System Analysis Overview</h3>
           
-          <h4>Array & MPPT Specs</h4>
+          <h4>Array & Solar Geometry Metrics</h4>
           <p><strong>Total Panels:</strong> <span id="resTotalPanels"></span></p>
-          <p><strong>Total Array Output:</strong> <span id="resArrayWatts"></span> W</p>
+          <p><strong>Nameplate Array Rating:</strong> <span id="resArrayWatts"></span> W</p>
+          <p><strong>Solar Incidence Derating Factor <span class="tooltip-icon" data-tooltip="Incidence Derating: Percentage of panel nameplate capacity captured based on latitude, tilt angle, orientation, and season.">?</span>:</strong> <span id="resDerateFactor">100%</span></p>
+          <p><strong>Effective Solar Sun Hours:</strong> <span id="resEffectiveSunHours">5.5</span> hrs/day</p>
+
           <p><strong>Array Voc Voltage (STC) <span class="tooltip-icon" data-tooltip="STC (Standard Test Conditions): Factory testing benchmark at 1,000 W/m² irradiance, 25°C (77°F) cell temp, and 1.5 Air Mass spectrum.">?</span>:</strong> <span id="resArrayVoc"></span> V <span id="resVocCheck"></span></p>
           <p><strong>Max Cold Array Voc (<span id="resColdTempLabel"></span><span class="temp-unit-label">°F</span>):</strong> <span id="resArrayVocCold"></span> V <span id="resColdVocCheck"></span></p>
           <p><strong>Array Isc Current:</strong> <span id="resArrayIsc"></span> A <span id="resIscCheck"></span></p>
@@ -278,7 +337,7 @@
           <p><strong>Peak AC Surge Load:</strong> <span id="resSurgeWatts"></span> W <span id="resSurgeCheck"></span></p>
 
           <h4>Generation vs Demand</h4>
-          <p><strong>Est. Daily Generation:</strong> <span id="resDailyYield"></span> Wh/day</p>
+          <p><strong>Est. Derated Daily Generation:</strong> <span id="resDailyYield"></span> Wh/day</p>
           <p><strong>Est. Daily Load Consumption:</strong> <span id="resDailyLoad"></span></p>
           <p><strong>Energy Balance:</strong> <span id="resEnergyBalance"></span></p>
 
@@ -314,53 +373,60 @@
 
     </div>
 
+    <!-- BOTTOM ROW: Mathematical Derivations -->
     <div id="derivationSection" class="derivation-box" style="display:none;">
       <h3>Mathematical Derivations & Formulas</h3>
       <div class="formula-grid">
         <div class="formula-card">
-          <h4>1. Temperature-Corrected $V_{oc\_cold}$</h4>
+          <h4>1. Solar Incidence & Tilt Derating</h4>
+          <p><strong>Formula:</strong> $\cos(\theta) = \sin(\alpha)\cos(\beta) + \cos(\alpha)\sin(\beta)\cos(\gamma_{\text{sun}} - \gamma)$</p>
+          <p><strong>Calculation:</strong> <span id="calcTiltDerate"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>2. Temperature-Corrected $V_{oc\_cold}$</h4>
           <p><strong>Formula:</strong> $V_{oc\_cold} = V_{oc\_string} \times \left(1 + \left(\Delta T \times \frac{\text{Coeff}}{100}\right)\right)$</p>
           <p><strong>Calculation:</strong> <span id="calcColdVoc"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>2. String & Array Current/Voltage ($V_{oc}$ / $I_{sc}$)</h4>
+          <h4>3. String & Array Current/Voltage ($V_{oc}$ / $I_{sc}$)</h4>
           <p><strong>Formula:</strong> $V_{oc} = \text{Series} \times V_{oc\_panel}$, $I_{sc} = \text{Parallel} \times I_{sc\_panel}$</p>
           <p><strong>Calculation:</strong> <span id="calcVocIsc"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>3. AC Load vs Inverter Limits</h4>
+          <h4>4. AC Load vs Inverter Limits</h4>
           <p><strong>Formula:</strong> $\sum \text{Running AC W}$ vs $\sum (\text{AC W} \times \text{Surge Multiplier})$</p>
           <p><strong>Calculation:</strong> <span id="calcInverter"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>4. Daily Load & Inversion Penalty</h4>
+          <h4>5. Daily Load & Inversion Penalty</h4>
           <p><strong>Formula:</strong> $\frac{\text{AC Wh}}{0.90 \text{ Inversion Eff.}} + \text{DC Wh}$</p>
           <p><strong>Calculation:</strong> <span id="calcLoadSplit"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>5. Usable Battery Capacity (DoD Impact)</h4>
+          <h4>6. Usable Battery Capacity (DoD Impact)</h4>
           <p><strong>Formula:</strong> $\text{Capacity}_{\text{Usable}} = (\text{Volts} \times \text{Ah}) \times \text{DoD}$</p>
           <p><strong>Calculation:</strong> <span id="calcBat"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>6. Cable Voltage Drop (NEC AWG)</h4>
+          <h4>7. Cable Voltage Drop (NEC AWG)</h4>
           <p><strong>Formula:</strong> $V_{\text{drop}} = I_{\text{array}} \times \left(\frac{2 \times \text{Distance}}{1000} \times R_{\text{gauge}}\right)$</p>
           <p><strong>Calculation:</strong> <span id="calcWireDrop"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>7. Hourly Battery State-of-Charge (SoC)</h4>
+          <h4>8. Hourly Battery State-of-Charge (SoC)</h4>
           <p><strong>Formula:</strong> $\text{SoC}_{t} = \text{SoC}_{t-1} + \left(\frac{\text{Solar Wh}_{t} - \text{Load Wh}_{t}}{\text{Usable Wh}}\right) \times 100\%$</p>
           <p><strong>Calculation:</strong> <span id="calcSocProgression"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>8. Weather Autonomy & Deficit Duration</h4>
+          <h4>9. Weather Autonomy & Deficit Duration</h4>
           <p><strong>Formula:</strong> $\text{Days}_{\text{Autonomy}} = \frac{\text{Usable Battery Wh}}{\text{Daily Load Wh} - \text{Stormy Yield Wh}}$</p>
           <p><strong>Calculation:</strong> <span id="calcAutonomyDeriv"></span></p>
         </div>

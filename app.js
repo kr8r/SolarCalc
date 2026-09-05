@@ -19,6 +19,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function applyLocationPreset(selectEl) {
+  const val = selectEl.value;
+  if (val === 'custom') return;
+
+  const [lat, sun] = val.split('|');
+  document.getElementById('latitude').value = lat;
+  document.getElementById('sunHours').value = sun;
+  calculateSystem();
+}
+
 function scrollToSection(sectionId) {
   const element = document.getElementById(sectionId);
   if (!element) return;
@@ -69,8 +79,8 @@ function toggleTempUnit() {
 function sanitizeInputs() {
   const nonNegativeIds = [
     'panelWatts', 'panelVoc', 'panelIsc', 'panelsSeries', 'parallelStrings',
-    'sunHours', 'mpptMaxVolts', 'mpptMaxAmps', 'inverterWatts', 'inverterSurge',
-    'batVolts', 'batAh', 'wireDistance', 'maxDropTarget'
+    'sunHours', 'latitude', 'panelTilt', 'mpptMaxVolts', 'mpptMaxAmps', 
+    'inverterWatts', 'inverterSurge', 'batVolts', 'batAh', 'wireDistance', 'maxDropTarget'
   ];
 
   nonNegativeIds.forEach(id => {
@@ -158,6 +168,10 @@ function saveSystemState() {
     minTemp: document.getElementById('minTemp').value,
     panelsSeries: document.getElementById('panelsSeries').value,
     parallelStrings: document.getElementById('parallelStrings').value,
+    latitude: document.getElementById('latitude').value,
+    panelTilt: document.getElementById('panelTilt').value,
+    panelAzimuth: document.getElementById('panelAzimuth').value,
+    seasonProfile: document.getElementById('seasonProfile').value,
     sunHours: document.getElementById('sunHours').value,
     mpptMaxVolts: document.getElementById('mpptMaxVolts').value,
     mpptMaxAmps: document.getElementById('mpptMaxAmps').value,
@@ -204,7 +218,8 @@ function loadSystemState() {
 
     const keys = [
       'panelWatts', 'panelVoc', 'panelIsc', 'tempCoeff', 'minTemp',
-      'panelsSeries', 'parallelStrings', 'sunHours', 'mpptMaxVolts', 'mpptMaxAmps',
+      'panelsSeries', 'parallelStrings', 'latitude', 'panelTilt', 'panelAzimuth',
+      'seasonProfile', 'sunHours', 'mpptMaxVolts', 'mpptMaxAmps',
       'inverterWatts', 'inverterSurge', 'batVolts', 'batAh', 'batDoD',
       'efficiency', 'wireDistance', 'wireGauge', 'maxDropTarget'
     ];
@@ -234,8 +249,36 @@ function resetSystemState() {
   }
 }
 
+// --- GEOGRAPHIC & SOLAR INCIDENCE GEOMETRY DERATING ENGINE ---
+function calculateSolarDerating(latDeg, tiltDeg, azimuthDeg, season) {
+  const latRad = latDeg * (Math.PI / 180);
+  const tiltRad = tiltDeg * (Math.PI / 180);
+  const aziRad = (azimuthDeg - 180) * (Math.PI / 180); // Deviation from South
+
+  // Solar Declination Angle (delta) by Season
+  let declinationDeg = 0;
+  if (season === 'summer') declinationDeg = 23.45; // Summer Solstice
+  else if (season === 'winter') declinationDeg = -23.45; // Winter Solstice
+  else declinationDeg = 0; // Equinox
+
+  const decRad = declinationDeg * (Math.PI / 180);
+
+  // Solar Elevation at Solar Noon (Hour Angle omega = 0)
+  const sinSolarNoonAlt = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad);
+  const noonAltRad = Math.asin(Math.max(-1, Math.min(1, sinSolarNoonAlt)));
+
+  if (noonAltRad <= 0) return 0.05; // polar night or sub-horizon sun
+
+  // Angle of Incidence (cos theta) at Solar Noon
+  const cosIncidence = Math.sin(noonAltRad) * Math.cos(tiltRad) + 
+                       Math.cos(noonAltRad) * Math.sin(tiltRad) * Math.cos(aziRad);
+
+  const rawDerate = Math.max(0.05, cosIncidence);
+  return Math.min(1.0, rawDerate);
+}
+
 // --- 24-HOUR SIMULATOR ENGINE & GRAPH CANVAS ---
-function render24HourSimulation(totalArrayWatts, sunHours, efficiency, usableBatteryWh, totalDailyLoadWh) {
+function render24HourSimulation(effectiveArrayWatts, effectiveSunHours, efficiency, usableBatteryWh, totalDailyLoadWh) {
   const canvas = document.getElementById('simCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -250,8 +293,8 @@ function render24HourSimulation(totalArrayWatts, sunHours, efficiency, usableBat
 
   const avgHourlyLoadW = totalDailyLoadWh / 24;
 
-  const peakSolarW = totalArrayWatts * efficiency;
-  const solarWindowHours = Math.min(12, Math.max(4, sunHours * 1.8));
+  const peakSolarW = effectiveArrayWatts * efficiency;
+  const solarWindowHours = Math.min(12, Math.max(4, effectiveSunHours * 1.8));
   const sunriseHour = 13 - (solarWindowHours / 2);
   const sunsetHour = 13 + (solarWindowHours / 2);
 
@@ -367,21 +410,27 @@ function render24HourSimulation(totalArrayWatts, sunHours, efficiency, usableBat
   ctx.stroke();
 
   document.getElementById('calcSocProgression').textContent = 
-    `Lowest SoC: ${Math.round(lowestSoC)}% at 6:00 AM | Peak Generation: ${Math.round(peakSolarW)} W at 1:00 PM`;
+    `Lowest SoC: ${Math.round(lowestSoC)}% at 6:00 AM | Geometrically Derated Peak: ${Math.round(peakSolarW)} W at 1:00 PM`;
 }
 
 // --- Weather & Autonomy Stress Test Logic ---
 function updateStressTest() {
-  const simSunHours = parseFloat(document.getElementById('simSunHours').value) || 0;
+  const simBaseSunHours = parseFloat(document.getElementById('simSunHours').value) || 0;
   const simBadDays = parseInt(document.getElementById('simBadDays').value) || 1;
 
-  document.getElementById('sunHoursVal').textContent = `${simSunHours.toFixed(1)} hrs`;
+  document.getElementById('sunHoursVal').textContent = `${simBaseSunHours.toFixed(1)} hrs`;
   document.getElementById('badDaysVal').textContent = `${simBadDays} day${simBadDays > 1 ? 's' : ''}`;
+
+  const latDeg = parseFloat(document.getElementById('latitude').value) || 0;
+  const tiltDeg = parseFloat(document.getElementById('panelTilt').value) || 0;
+  const azimuthDeg = parseFloat(document.getElementById('panelAzimuth').value) || 180;
+  const season = document.getElementById('seasonProfile').value;
+  const derateFactor = calculateSolarDerating(latDeg, tiltDeg, azimuthDeg, season);
 
   const series = parseFloat(document.getElementById('panelsSeries').value) || 0;
   const parallel = parseFloat(document.getElementById('parallelStrings').value) || 0;
   const panelWatts = parseFloat(document.getElementById('panelWatts').value) || 0;
-  const totalArrayWatts = series * parallel * panelWatts;
+  const nameplateArrayWatts = series * parallel * panelWatts;
   
   const efficiency = (parseFloat(document.getElementById('efficiency').value) || 0) / 100;
   const batVolts = parseFloat(document.getElementById('batVolts').value) || 0;
@@ -410,7 +459,7 @@ function updateStressTest() {
   const totalDailyLoadWh = (acDailyWh / 0.90) + dcDailyWh;
 
   const lowYieldFactor = 0.20; 
-  const stormyDailyYieldWh = totalArrayWatts * simSunHours * efficiency * lowYieldFactor;
+  const stormyDailyYieldWh = nameplateArrayWatts * derateFactor * simBaseSunHours * efficiency * lowYieldFactor;
   const dailyDeficit = totalDailyLoadWh - stormyDailyYieldWh;
   const totalDeficitOverPeriod = dailyDeficit * simBadDays;
 
@@ -454,7 +503,12 @@ function calculateSystem() {
 
   const series = parseFloat(document.getElementById('panelsSeries').value) || 0;
   const parallel = parseFloat(document.getElementById('parallelStrings').value) || 0;
-  const sunHours = parseFloat(document.getElementById('sunHours').value) || 0;
+  
+  const latDeg = parseFloat(document.getElementById('latitude').value) || 0;
+  const tiltDeg = parseFloat(document.getElementById('panelTilt').value) || 0;
+  const azimuthDeg = parseFloat(document.getElementById('panelAzimuth').value) || 180;
+  const season = document.getElementById('seasonProfile').value;
+  const baseSunHours = parseFloat(document.getElementById('sunHours').value) || 0;
 
   const mpptMaxVolts = parseFloat(document.getElementById('mpptMaxVolts').value) || 0;
   const mpptMaxAmps = parseFloat(document.getElementById('mpptMaxAmps').value) || 0;
@@ -471,7 +525,13 @@ function calculateSystem() {
   const maxDropTarget = parseFloat(document.getElementById('maxDropTarget').value) || 3;
 
   const totalPanels = series * parallel;
-  const totalArrayWatts = totalPanels * panelWatts;
+  const nameplateArrayWatts = totalPanels * panelWatts;
+  
+  // Calculate Geometric Solar Incidence Derating
+  const derateFactor = calculateSolarDerating(latDeg, tiltDeg, azimuthDeg, season);
+  const effectiveArrayWatts = nameplateArrayWatts * derateFactor;
+  const effectiveSunHours = baseSunHours * derateFactor;
+
   const arrayVoc = series * panelVoc;
   const arrayIsc = parallel * panelIsc;
 
@@ -509,11 +569,11 @@ function calculateSystem() {
   const grossAcDailyWh = acDailyWh / inverterInversionEfficiency;
   const totalDailyLoadWh = grossAcDailyWh + dcDailyWh;
 
-  const dailyYieldWh = totalArrayWatts * sunHours * efficiency;
+  const dailyYieldWh = nameplateArrayWatts * effectiveSunHours * efficiency;
   const rawBatteryWh = batVolts * batAh;
   const usableBatteryWh = rawBatteryWh * batDoD;
   
-  const effectiveGenWatts = totalArrayWatts * efficiency;
+  const effectiveGenWatts = effectiveArrayWatts * efficiency;
   const chargeTimeHours = effectiveGenWatts > 0 ? (usableBatteryWh / effectiveGenWatts) : 0;
   const daysAutonomy = totalDailyLoadWh > 0 ? (usableBatteryWh / totalDailyLoadWh) : 0;
 
@@ -525,7 +585,10 @@ function calculateSystem() {
   const powerLossWatts = Math.pow(arrayIsc, 2) * totalResistance;
 
   document.getElementById('resTotalPanels').textContent = totalPanels;
-  document.getElementById('resArrayWatts').textContent = totalArrayWatts.toLocaleString();
+  document.getElementById('resArrayWatts').textContent = nameplateArrayWatts.toLocaleString();
+  document.getElementById('resDerateFactor').textContent = `${Math.round(derateFactor * 100)}%`;
+  document.getElementById('resEffectiveSunHours').textContent = effectiveSunHours.toFixed(1);
+
   document.getElementById('resArrayVoc').textContent = arrayVoc.toFixed(1);
   document.getElementById('resColdTempLabel').textContent = minTemp;
   document.getElementById('resArrayVocCold').textContent = arrayVocCold.toFixed(1);
@@ -585,6 +648,9 @@ function calculateSystem() {
   dropStatusEl.textContent = percentDrop <= maxDropTarget ? "(Within Target)" : "(EXCEEDS TARGET DROP!)";
   dropStatusEl.className = percentDrop <= maxDropTarget ? "status-ok" : "status-warn";
 
+  document.getElementById('calcTiltDerate').textContent = 
+    `Lat: ${latDeg}° | Tilt: ${tiltDeg}° | Azi: ${azimuthDeg}° | Season: ${season.toUpperCase()} → Derating: ${Math.round(derateFactor * 100)}% (${nameplateArrayWatts}W → ${Math.round(effectiveArrayWatts)}W)`;
+
   document.getElementById('calcColdVoc').textContent = 
     `${arrayVoc.toFixed(1)} V × (1 + (${deltaTemp}°${currentTempUnit} × ${tempCoeff}% / 100)) = ${arrayVocCold.toFixed(1)} V at ${minTemp}°${currentTempUnit}`;
 
@@ -604,7 +670,7 @@ function calculateSystem() {
     `${arrayIsc.toFixed(1)} A × (${totalWireLengthFt} ft / 1000 × ${ohmPer1000Ft} Ω) = ${voltageDrop.toFixed(2)} V drop (${percentDrop.toFixed(2)}%)`;
 
   // Visual Interactive SVG Diagram Updates
-  document.getElementById('svgArrayPower').textContent = `${totalArrayWatts} W`;
+  document.getElementById('svgArrayPower').textContent = `${Math.round(effectiveArrayWatts)} W`;
   document.getElementById('svgArrayVolts').textContent = `${arrayVoc.toFixed(1)} V`;
   document.getElementById('svgBatVolts').textContent = `${batVolts} V`;
   document.getElementById('svgBatCap').textContent = `${Math.round(usableBatteryWh)} Wh`;
@@ -639,6 +705,6 @@ function calculateSystem() {
   document.getElementById('results').style.display = 'block';
   document.getElementById('derivationSection').style.display = 'block';
 
-  render24HourSimulation(totalArrayWatts, sunHours, efficiency, usableBatteryWh, totalDailyLoadWh);
+  render24HourSimulation(effectiveArrayWatts, effectiveSunHours, efficiency, usableBatteryWh, totalDailyLoadWh);
   updateStressTest();
 }
