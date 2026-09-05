@@ -9,16 +9,14 @@
 <body>
   <div class="calculator-container">
     <div class="header-bar">
-      <h2>Advanced Solar System Calculator</h2>
+      24-Hour Battery SoC & Power Graph
       <button type="button" id="darkModeToggle" class="btn-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
     </div>
     
     <div class="calculator-grid">
       
-      <!-- LEFT COLUMN: Input Sections -->
       <div class="input-section">
         
-        <!-- Solar Array Specs -->
         <div id="sec-array" class="input-group">
           <h3>Solar Array Specs</h3>
           
@@ -27,12 +25,12 @@
           </label>
           
           <label>
-            <span>Open Circuit Voltage (Voc) <span class="tooltip-icon" title="Maximum voltage output when no load is connected. Used for MPPT controller sizing.">?</span>:</span>
+            <span>Open-Circuit Voltage (Voc) <span class="tooltip-icon" data-tooltip="Open-Circuit Voltage (Voc): Maximum voltage output of a panel when no electrical load is connected. Crucial for sizing MPPT controllers.">?</span>:</span>
             <input type="number" id="panelVoc" value="49.5" step="0.1" min="0">
           </label>
           
           <label>
-            <span>Short Circuit Current (Isc) <span class="tooltip-icon" title="Maximum current from solar panels. Used to size wire gauge and charge controller amps.">?</span>:</span>
+            <span>Short-Circuit Current (Isc) <span class="tooltip-icon" data-tooltip="Short-Circuit Current (Isc): Maximum current produced by a panel when positive and negative terminals are directly shorted. Used to size fusing and wire ampacity.">?</span>:</span>
             <input type="number" id="panelIsc" value="10.5" step="0.1" min="0">
           </label>
 
@@ -42,7 +40,7 @@
           </div>
           
           <label>
-            <span>Temp Coeff of Voc (%/<span class="temp-unit-label">°F</span>) <span class="tooltip-icon" title="Rate at which voltage increases as temperature drops. Typically -0.16%/°F (-0.30%/°C).">?</span>:</span>
+            <span>Temp Coeff of Voc (%/<span class="temp-unit-label">°F</span>) <span class="tooltip-icon" data-tooltip="Temperature Coefficient of Voc: Rate at which panel voltage increases as ambient temperature drops below STC (Standard Test Conditions = 77°F / 25°C). Typically -0.16%/°F (-0.30%/°C).">?</span>:</span>
             <input type="number" id="tempCoeff" value="-0.16" step="0.01" max="0">
           </label>
 
@@ -60,61 +58,66 @@
             <input type="number" id="parallelStrings" value="2" min="1">
           </label>
           
-          <label>Peak Sun Hours/Day: 
+          <label>
+            <span>Peak Sun Hours/Day <span class="tooltip-icon" data-tooltip="Peak Sun Hours: Number of hours per day when solar irradiance averages 1,000 Watts per square meter (equivalent to full midday sun).">?</span>:</span>
             <input type="number" id="sunHours" value="5" step="0.1" min="0">
           </label>
         </div>
 
-        <!-- Hardware Limits -->
         <div id="sec-hardware" class="input-group">
           <h3>Hardware Limits (MPPT & Inverter)</h3>
           
-          <label>MPPT Max Voltage (V): 
+          <label>
+            <span>MPPT Max Voltage (V) <span class="tooltip-icon" data-tooltip="MPPT (Maximum Power Point Tracking): Electronic charge controller that optimizes array voltage down to battery voltage. Max voltage rating must never be exceeded in freezing weather.">?</span>:</span>
             <input type="number" id="mpptMaxVolts" value="100" min="0">
           </label>
           
-          <label>MPPT Max Current (A): 
+          <label>
+            <span>MPPT Max Current (A) <span class="tooltip-icon" data-tooltip="MPPT Max Current: Upper limit of array short-circuit current (Isc) or output charging current the controller can safely process.">?</span>:</span>
             <input type="number" id="mpptMaxAmps" value="30" min="0">
           </label>
 
-          <label>Inverter Continuous Rating (W): 
+          <label>
+            <span>Inverter Continuous Rating (W) <span class="tooltip-icon" data-tooltip="Inverter Continuous Wattage: Maximum sustained AC power output for running regular household appliances continuously.">?</span>:</span>
             <input type="number" id="inverterWatts" value="2000" min="0">
           </label>
 
-          <label>Inverter Peak Surge Rating (W): 
+          <label>
+            <span>Inverter Peak Surge Rating (W) <span class="tooltip-icon" data-tooltip="Inverter Peak Surge Wattage: Short-term power surge capacity (usually 2-5 seconds) required to start electric motors, compressors, and pumps.">?</span>:</span>
             <input type="number" id="inverterSurge" value="4000" min="0">
           </label>
         </div>
 
-        <!-- Battery Bank -->
         <div id="sec-battery" class="input-group">
           <h3>Battery Bank & System</h3>
           <label>System Voltage (V): 
             <input type="number" id="batVolts" value="24" min="0">
           </label>
           
-          <label>Capacity (Ah): 
+          <label>
+            <span>Capacity (Ah) <span class="tooltip-icon" data-tooltip="Amp-Hours (Ah): Measure of electric charge capacity. Total Watt-Hours (Wh) = Voltage (V) x Amp-Hours (Ah).">?</span>:</span>
             <input type="number" id="batAh" value="200" min="0">
           </label>
           
           <label>
-            <span>Depth of Discharge (DoD %) <span class="tooltip-icon" title="Safe limit to drain battery. LiFePO4 is typically 80%-90%, Lead-Acid is 50%.">?</span>:</span>
+            <span>Depth of Discharge (DoD %) <span class="tooltip-icon" data-tooltip="Depth of Discharge (DoD): Maximum percentage of battery energy used before recharging. LiFePO4 (Lithium) is typically 80%-90%; Lead-Acid/AGM is 50%.">?</span>:</span>
             <input type="number" id="batDoD" value="80" max="100" min="0">
           </label>
 
-          <label>System Efficiency (%): 
+          <label>
+            <span>System Efficiency (%) <span class="tooltip-icon" data-tooltip="System Efficiency: Round-trip efficiency factor accounting for battery charging resistance, wiring resistance, and charge controller heat losses.">?</span>:</span>
             <input type="number" id="efficiency" value="85" max="100" min="0">
           </label>
         </div>
 
-        <!-- Wiring -->
         <div id="sec-wiring" class="input-group">
           <h3>Solar-to-Controller Wiring</h3>
           <label>One-Way Distance (ft): 
             <input type="number" id="wireDistance" value="25" min="0">
           </label>
           
-          <label>Wire Size (AWG): 
+          <label>
+            <span>Wire Size (AWG) <span class="tooltip-icon" data-tooltip="American Wire Gauge (AWG): Standardized wire gauge sizing system. Smaller numbers represent thicker copper conductors with lower electrical resistance.">?</span>:</span>
             <select id="wireGauge">
               <option value="14">14 AWG</option>
               <option value="12">12 AWG</option>
@@ -129,12 +132,12 @@
             </select>
           </label>
           
-          <label>Max Voltage Drop Target (%): 
+          <label>
+            <span>Max Voltage Drop Target (%) <span class="tooltip-icon" data-tooltip="Voltage Drop Target: Percentage of array voltage lost as heat in long cable runs. NEC (National Electrical Code) recommends keeping voltage drop under 3% for solar PV circuits.">?</span>:</span>
             <input type="number" id="maxDropTarget" value="3" step="0.5" min="0">
           </label>
         </div>
 
-        <!-- Daily Load Profile -->
         <div id="sec-loads" class="input-group">
           <h3>Daily Load Profile</h3>
           
@@ -172,22 +175,18 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Interactive Diagram & Analysis Overview -->
       <div class="analysis-section">
         
-        <!-- Interactive System Architecture Visualizer -->
         <div id="diagramCard" class="diagram-card" style="display:none;">
           <h3>Interactive System Diagram</h3>
           <p class="diagram-hint">Click any component to jump directly to its input settings.</p>
           <div class="svg-container">
             <svg id="solarSvg" viewBox="0 0 600 210" xmlns="http://www.w3.org/2000/svg">
-              <!-- Animated Wiring Paths -->
               <path d="M 110 70 L 190 70" class="wire wire-dc" />
               <path d="M 250 70 L 330 70" class="wire wire-dc" />
               <path d="M 390 70 L 470 70" class="wire wire-ac" />
               <path d="M 360 95 L 360 155 L 470 155" class="wire wire-dc" />
 
-              <!-- Solar Array Block -->
               <g class="interactive-node" onclick="scrollToSection('sec-array')">
                 <rect x="10" y="30" width="100" height="80" rx="6" class="node-box" />
                 <text x="60" y="52" class="node-title">Solar Array</text>
@@ -195,14 +194,12 @@
                 <text x="60" y="85" class="node-sub" id="svgArrayVolts">0 V</text>
               </g>
 
-              <!-- MPPT Controller Block -->
               <g class="interactive-node" onclick="scrollToSection('sec-hardware')">
                 <rect x="190" y="30" width="60" height="80" rx="6" id="svgMpptBox" class="node-box" />
                 <text x="220" y="55" class="node-title">MPPT</text>
                 <text x="220" y="75" class="node-sub" id="svgMpptStatus">OK</text>
               </g>
 
-              <!-- Battery Bank Block -->
               <g class="interactive-node" onclick="scrollToSection('sec-battery')">
                 <rect x="330" y="30" width="60" height="80" rx="6" class="node-box" />
                 <text x="360" y="50" class="node-title">Battery</text>
@@ -210,7 +207,6 @@
                 <text x="360" y="83" class="node-sub" id="svgBatCap">0 Wh</text>
               </g>
 
-              <!-- Inverter Block -->
               <g class="interactive-node" onclick="scrollToSection('sec-hardware')">
                 <rect x="470" y="30" width="120" height="80" rx="6" id="svgInverterBox" class="node-box" />
                 <text x="530" y="50" class="node-title">Inverter</text>
@@ -218,7 +214,6 @@
                 <text x="530" y="83" class="node-sub" id="svgInverterStatus">OK</text>
               </g>
 
-              <!-- DC Loads Block -->
               <g class="interactive-node" onclick="scrollToSection('sec-loads')">
                 <rect x="470" y="130" width="120" height="50" rx="6" class="node-box" />
                 <text x="530" y="152" class="node-title">DC Loads</text>
@@ -228,14 +223,53 @@
           </div>
         </div>
 
-        <!-- Numerical & Status Results Overview -->
+        <div id="sim24Card" class="sim24-card" style="display:none;">
+          <h3>24-Hour Battery SoC & Power Graph</h3>
+          <p class="sim24-hint">Hour-by-hour simulation comparing solar generation against hourly load draw.</p>
+          
+          <div class="canvas-wrapper">
+            <canvas id="simCanvas" width="550" height="220"></canvas>
+          </div>
+
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color color-solar"></span> Solar Gen (W)</span>
+            <span class="legend-item"><span class="legend-color color-load"></span> Load (W)</span>
+            <span class="legend-item"><span class="legend-color color-soc"></span> Battery SoC (%)</span>
+          </div>
+
+          <div class="sim24-metrics">
+            <p><strong>Overnight SoC Dip (6:00 AM) <span class="tooltip-icon" data-tooltip="State-of-Charge (SoC): Percentage of usable battery energy remaining. Lowest SoC typically occurs at 6:00 AM directly before sunrise.">?</span>:</strong> <span id="sim24LowestSoc">100%</span></p>
+            <p><strong>Peak Solar Generation:</strong> <span id="sim24PeakWatts">0</span> W at 1:00 PM</p>
+            <p><strong>24-Hour Cycle Status:</strong> <span id="sim24Status">--</span></p>
+          </div>
+        </div>
+
+        <div id="stressTestCard" class="stress-card" style="display:none;">
+          <h3>Weather & Autonomy Stress Test</h3>
+          
+          <label>Simulated Peak Sun Hours: <span id="sunHoursVal" class="slider-val">5.0 hrs</span>
+            <input type="range" id="simSunHours" min="0.5" max="8.0" step="0.5" value="5.0" oninput="updateStressTest()">
+          </label>
+
+          <label>Consecutive Low-Solar Days: <span id="badDaysVal" class="slider-val">3 days</span>
+            <input type="range" id="simBadDays" min="1" max="7" step="1" value="3" oninput="updateStressTest()">
+          </label>
+
+          <div class="stress-results">
+            <p><strong>Daily Solar Yield (Low Yield 20%):</strong> <span id="simDailyYield">0</span> Wh/day</p>
+            <p><strong>Net Deficit per Low-Solar Day:</strong> <span id="simDailyDeficit">0</span> Wh/day</p>
+            <p><strong>Usable SoC After Stormy Period <span class="tooltip-icon" data-tooltip="State-of-Charge (SoC): Remaining usable energy percentage inside the battery bank following consecutive overcast days.">?</span>:</strong> <span id="simFinalSoc">100%</span></p>
+            <p><strong>Autonomy Status <span class="tooltip-icon" data-tooltip="Days of Autonomy: Number of full 24-hour days the system can run on battery power alone without any solar input.">?</span>:</strong> <span id="simStatus">--</span></p>
+          </div>
+        </div>
+
         <div id="results" class="results-box" style="display:none;">
           <h3>System Analysis Overview</h3>
           
           <h4>Array & MPPT Specs</h4>
           <p><strong>Total Panels:</strong> <span id="resTotalPanels"></span></p>
           <p><strong>Total Array Output:</strong> <span id="resArrayWatts"></span> W</p>
-          <p><strong>Array Voc Voltage (STC):</strong> <span id="resArrayVoc"></span> V <span id="resVocCheck"></span></p>
+          <p><strong>Array Voc Voltage (STC) <span class="tooltip-icon" data-tooltip="STC (Standard Test Conditions): Factory testing benchmark at 1,000 W/m² irradiance, 25°C (77°F) cell temp, and 1.5 Air Mass spectrum.">?</span>:</strong> <span id="resArrayVoc"></span> V <span id="resVocCheck"></span></p>
           <p><strong>Max Cold Array Voc (<span id="resColdTempLabel"></span><span class="temp-unit-label">°F</span>):</strong> <span id="resArrayVocCold"></span> V <span id="resColdVocCheck"></span></p>
           <p><strong>Array Isc Current:</strong> <span id="resArrayIsc"></span> A <span id="resIscCheck"></span></p>
           
@@ -253,7 +287,7 @@
           
           <div class="progress-bar-container">
             <div class="progress-bar-label">
-              <span>Daily Load Coverage vs Storage:</span>
+              <span>Daily Load Coverage vs Storage (SoC Impact):</span>
               <span id="resStorageUsagePercent">0%</span>
             </div>
             <div class="progress-track">
@@ -262,11 +296,15 @@
           </div>
 
           <p><strong>Est. Solar Charge Time (0-100%):</strong> <span id="resChargeTime"></span> hours</p>
-          <p><strong>Days of Autonomy:</strong> <span id="resAutonomy"></span> days</p>
+          <p><strong>Days of Autonomy <span class="tooltip-icon" data-tooltip="Days of Autonomy: Number of full days the battery bank can support system loads without solar charging before hitting safe Depth of Discharge (DoD) limits.">?</span>:</strong> <span id="resAutonomy"></span> days</p>
 
           <h4>Wiring Metrics</h4>
           <p><strong>Voltage Drop:</strong> <span id="resVoltsDrop"></span> V (<span id="resPercentDrop"></span>%) <span id="resDropStatus"></span></p>
           <p><strong>Power Lost in Cable:</strong> <span id="resPowerLoss"></span> W</p>
+
+          <div class="button-group" style="margin-top: 16px;">
+            <button type="button" class="btn-secondary" style="width: 100%;" onclick="exportSpecSheet()">📄 Export System Spec Sheet / PDF</button>
+          </div>
         </div>
         
         <div id="placeholderText" class="placeholder-box">
@@ -276,7 +314,6 @@
 
     </div>
 
-    <!-- BOTTOM ROW: Mathematical Derivations -->
     <div id="derivationSection" class="derivation-box" style="display:none;">
       <h3>Mathematical Derivations & Formulas</h3>
       <div class="formula-grid">
@@ -287,7 +324,7 @@
         </div>
 
         <div class="formula-card">
-          <h4>2. String & Array Current/Voltage</h4>
+          <h4>2. String & Array Current/Voltage ($V_{oc}$ / $I_{sc}$)</h4>
           <p><strong>Formula:</strong> $V_{oc} = \text{Series} \times V_{oc\_panel}$, $I_{sc} = \text{Parallel} \times I_{sc\_panel}$</p>
           <p><strong>Calculation:</strong> <span id="calcVocIsc"></span></p>
         </div>
@@ -305,15 +342,27 @@
         </div>
 
         <div class="formula-card">
-          <h4>5. Usable Battery Storage</h4>
-          <p><strong>Formula:</strong> $(\text{Volts} \times \text{Ah}) \times \text{DoD}$</p>
+          <h4>5. Usable Battery Capacity (DoD Impact)</h4>
+          <p><strong>Formula:</strong> $\text{Capacity}_{\text{Usable}} = (\text{Volts} \times \text{Ah}) \times \text{DoD}$</p>
           <p><strong>Calculation:</strong> <span id="calcBat"></span></p>
         </div>
 
         <div class="formula-card">
-          <h4>6. Cable Voltage Drop</h4>
+          <h4>6. Cable Voltage Drop (NEC AWG)</h4>
           <p><strong>Formula:</strong> $V_{\text{drop}} = I_{\text{array}} \times \left(\frac{2 \times \text{Distance}}{1000} \times R_{\text{gauge}}\right)$</p>
           <p><strong>Calculation:</strong> <span id="calcWireDrop"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>7. Hourly Battery State-of-Charge (SoC)</h4>
+          <p><strong>Formula:</strong> $\text{SoC}_{t} = \text{SoC}_{t-1} + \left(\frac{\text{Solar Wh}_{t} - \text{Load Wh}_{t}}{\text{Usable Wh}}\right) \times 100\%$</p>
+          <p><strong>Calculation:</strong> <span id="calcSocProgression"></span></p>
+        </div>
+
+        <div class="formula-card">
+          <h4>8. Weather Autonomy & Deficit Duration</h4>
+          <p><strong>Formula:</strong> $\text{Days}_{\text{Autonomy}} = \frac{\text{Usable Battery Wh}}{\text{Daily Load Wh} - \text{Stormy Yield Wh}}$</p>
+          <p><strong>Calculation:</strong> <span id="calcAutonomyDeriv"></span></p>
         </div>
       </div>
     </div>

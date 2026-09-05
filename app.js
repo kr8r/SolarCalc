@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Smoothly scroll to and highlight a specific input section from SVG diagram clicks
 function scrollToSection(sectionId) {
   const element = document.getElementById(sectionId);
   if (!element) return;
@@ -37,6 +36,7 @@ function toggleDarkMode() {
   document.body.classList.toggle('dark-mode', isDarkMode);
   document.getElementById('darkModeToggle').textContent = isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
   saveSystemState();
+  calculateSystem();
 }
 
 function toggleTempUnit() {
@@ -234,6 +234,214 @@ function resetSystemState() {
   }
 }
 
+// --- 24-HOUR SIMULATOR ENGINE & GRAPH CANVAS ---
+function render24HourSimulation(totalArrayWatts, sunHours, efficiency, usableBatteryWh, totalDailyLoadWh) {
+  const canvas = document.getElementById('simCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const hourlySolarWatts = [];
+  const hourlyLoadWatts = [];
+  const hourlySoC = [];
+
+  const avgHourlyLoadW = totalDailyLoadWh / 24;
+
+  const peakSolarW = totalArrayWatts * efficiency;
+  const solarWindowHours = Math.min(12, Math.max(4, sunHours * 1.8));
+  const sunriseHour = 13 - (solarWindowHours / 2);
+  const sunsetHour = 13 + (solarWindowHours / 2);
+
+  for (let h = 0; h < 24; h++) {
+    hourlyLoadWatts.push(avgHourlyLoadW);
+
+    if (h >= sunriseHour && h <= sunsetHour) {
+      const normTime = (h - sunriseHour) / (sunsetHour - sunriseHour);
+      const solarRatio = Math.sin(normTime * Math.PI);
+      hourlySolarWatts.push(peakSolarW * solarRatio);
+    } else {
+      hourlySolarWatts.push(0);
+    }
+  }
+
+  let currentCapWh = usableBatteryWh;
+  let lowestSoC = 100;
+
+  for (let h = 0; h < 24; h++) {
+    const netWh = hourlySolarWatts[h] - hourlyLoadWatts[h];
+    currentCapWh = Math.min(usableBatteryWh, Math.max(0, currentCapWh + netWh));
+    const soc = usableBatteryWh > 0 ? (currentCapWh / usableBatteryWh) * 100 : 0;
+    hourlySoC.push(soc);
+    if (soc < lowestSoC) lowestSoC = soc;
+  }
+
+  document.getElementById('sim24LowestSoc').textContent = `${Math.round(lowestSoC)}%`;
+  document.getElementById('sim24PeakWatts').textContent = Math.round(peakSolarW).toLocaleString();
+  
+  const statusEl = document.getElementById('sim24Status');
+  if (lowestSoC <= 0) {
+    statusEl.textContent = "CRITICAL - Battery depletes overnight before sunrise!";
+    statusEl.className = "status-warn";
+  } else if (lowestSoC < 20) {
+    statusEl.textContent = "WARNING - High overnight battery discharge depth.";
+    statusEl.className = "status-warn";
+  } else {
+    statusEl.textContent = "STABLE - Balanced 24-hour generation/consumption cycle.";
+    statusEl.className = "status-ok";
+  }
+
+  const padLeft = 35;
+  const padBottom = 25;
+  const padTop = 15;
+  const padRight = 35;
+
+  const graphW = width - padLeft - padRight;
+  const graphH = height - padTop - padBottom;
+
+  const maxPowerScale = Math.max(peakSolarW, avgHourlyLoadW * 1.5, 100);
+
+  ctx.strokeStyle = isDarkMode ? '#333' : '#e0e0e0';
+  ctx.lineWidth = 1;
+
+  for (let p = 0; p <= 4; p++) {
+    const y = padTop + (graphH * (p / 4));
+    ctx.beginPath();
+    ctx.moveTo(padLeft, y);
+    ctx.lineTo(width - padRight, y);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = isDarkMode ? '#aaa' : '#666';
+  ctx.font = '9px Arial';
+  ctx.textAlign = 'center';
+  for (let h = 0; h <= 24; h += 4) {
+    const x = padLeft + (graphW * (h / 24));
+    ctx.fillText(`${h}:00`, x, height - 8);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(padLeft, padTop + graphH);
+  for (let h = 0; h < 24; h++) {
+    const x = padLeft + (graphW * (h / 23));
+    const y = padTop + graphH - (graphH * (hourlySolarWatts[h] / maxPowerScale));
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(padLeft + graphW, padTop + graphH);
+  ctx.closePath();
+  ctx.fillStyle = isDarkMode ? 'rgba(251, 192, 45, 0.25)' : 'rgba(251, 192, 45, 0.35)';
+  ctx.fill();
+
+  ctx.beginPath();
+  for (let h = 0; h < 24; h++) {
+    const x = padLeft + (graphW * (h / 23));
+    const y = padTop + graphH - (graphH * (hourlySolarWatts[h] / maxPowerScale));
+    if (h === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#fbc02d';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.beginPath();
+  for (let h = 0; h < 24; h++) {
+    const x = padLeft + (graphW * (h / 23));
+    const y = padTop + graphH - (graphH * (hourlyLoadWatts[h] / maxPowerScale));
+    if (h === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#d32f2f';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  for (let h = 0; h < 24; h++) {
+    const x = padLeft + (graphW * (h / 23));
+    const y = padTop + graphH - (graphH * (hourlySoC[h] / 100));
+    if (h === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#0288d1';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  document.getElementById('calcSocProgression').textContent = 
+    `Lowest SoC: ${Math.round(lowestSoC)}% at 6:00 AM | Peak Generation: ${Math.round(peakSolarW)} W at 1:00 PM`;
+}
+
+// --- Weather & Autonomy Stress Test Logic ---
+function updateStressTest() {
+  const simSunHours = parseFloat(document.getElementById('simSunHours').value) || 0;
+  const simBadDays = parseInt(document.getElementById('simBadDays').value) || 1;
+
+  document.getElementById('sunHoursVal').textContent = `${simSunHours.toFixed(1)} hrs`;
+  document.getElementById('badDaysVal').textContent = `${simBadDays} day${simBadDays > 1 ? 's' : ''}`;
+
+  const series = parseFloat(document.getElementById('panelsSeries').value) || 0;
+  const parallel = parseFloat(document.getElementById('parallelStrings').value) || 0;
+  const panelWatts = parseFloat(document.getElementById('panelWatts').value) || 0;
+  const totalArrayWatts = series * parallel * panelWatts;
+  
+  const efficiency = (parseFloat(document.getElementById('efficiency').value) || 0) / 100;
+  const batVolts = parseFloat(document.getElementById('batVolts').value) || 0;
+  const batAh = parseFloat(document.getElementById('batAh').value) || 0;
+  const batDoD = (parseFloat(document.getElementById('batDoD').value) || 0) / 100;
+  const usableBatteryWh = (batVolts * batAh) * batDoD;
+
+  let acDailyWh = 0;
+  let dcDailyWh = 0;
+  const wattInputs = document.querySelectorAll('.app-watts');
+  const hourInputs = document.querySelectorAll('.app-hours');
+  const typeInputs = document.querySelectorAll('.app-type');
+
+  wattInputs.forEach((input, index) => {
+    const w = parseFloat(input.value) || 0;
+    const h = parseFloat(hourInputs[index].value) || 0;
+    const type = typeInputs[index] ? typeInputs[index].value : 'AC';
+
+    if (type === 'AC') {
+      acDailyWh += (w * h);
+    } else {
+      dcDailyWh += (w * h);
+    }
+  });
+
+  const totalDailyLoadWh = (acDailyWh / 0.90) + dcDailyWh;
+
+  const lowYieldFactor = 0.20; 
+  const stormyDailyYieldWh = totalArrayWatts * simSunHours * efficiency * lowYieldFactor;
+  const dailyDeficit = totalDailyLoadWh - stormyDailyYieldWh;
+  const totalDeficitOverPeriod = dailyDeficit * simBadDays;
+
+  const remainingStorageWh = Math.max(0, usableBatteryWh - totalDeficitOverPeriod);
+  const finalSocPercent = usableBatteryWh > 0 ? Math.round((remainingStorageWh / usableBatteryWh) * 100) : 0;
+
+  document.getElementById('simDailyYield').textContent = Math.round(stormyDailyYieldWh).toLocaleString();
+  document.getElementById('simDailyDeficit').textContent = dailyDeficit > 0 ? `-${Math.round(dailyDeficit).toLocaleString()}` : '+0';
+  document.getElementById('simFinalSoc').textContent = `${finalSocPercent}%`;
+
+  const statusEl = document.getElementById('simStatus');
+  if (totalDeficitOverPeriod <= 0) {
+    statusEl.textContent = "Safe - Solar generation covers daily consumption even in bad weather.";
+    statusEl.className = "status-ok";
+  } else if (remainingStorageWh > 0) {
+    statusEl.textContent = `Sufficient - Battery storage retains ${finalSocPercent}% usable charge after ${simBadDays} stormy days.`;
+    statusEl.className = "status-ok";
+  } else {
+    const daysUntilDepletion = dailyDeficit > 0 ? (usableBatteryWh / dailyDeficit) : 0;
+    statusEl.textContent = `CRITICAL DEFICIT - Battery bank completely depleted after ${daysUntilDepletion.toFixed(1)} days!`;
+    statusEl.className = "status-warn";
+  }
+
+  document.getElementById('calcAutonomyDeriv').textContent = 
+    `Usable Wh: ${Math.round(usableBatteryWh)} Wh / Daily Deficit: ${Math.round(dailyDeficit)} Wh/day = ${finalSocPercent}% SoC after ${simBadDays} bad weather days`;
+}
+
+function exportSpecSheet() {
+  window.print();
+}
+
 function calculateSystem() {
   sanitizeInputs();
   saveSystemState();
@@ -272,7 +480,6 @@ function calculateSystem() {
   const coldVocMultiplier = 1 + ((deltaTemp * tempCoeff) / 100);
   const arrayVocCold = arrayVoc * coldVocMultiplier;
 
-  // Separate AC vs. DC Load Totals
   let acDailyWh = 0;
   let dcDailyWh = 0;
   let acRunningWatts = 0;
@@ -298,7 +505,6 @@ function calculateSystem() {
     }
   });
 
-  // Apply 10% Inverter Inversion Penalty (0.90 efficiency) specifically to AC loads
   const inverterInversionEfficiency = 0.90;
   const grossAcDailyWh = acDailyWh / inverterInversionEfficiency;
   const totalDailyLoadWh = grossAcDailyWh + dcDailyWh;
@@ -318,7 +524,6 @@ function calculateSystem() {
   const percentDrop = arrayVoc > 0 ? (voltageDrop / arrayVoc) * 100 : 0;
   const powerLossWatts = Math.pow(arrayIsc, 2) * totalResistance;
 
-  // Render text outputs
   document.getElementById('resTotalPanels').textContent = totalPanels;
   document.getElementById('resArrayWatts').textContent = totalArrayWatts.toLocaleString();
   document.getElementById('resArrayVoc').textContent = arrayVoc.toFixed(1);
@@ -380,7 +585,6 @@ function calculateSystem() {
   dropStatusEl.textContent = percentDrop <= maxDropTarget ? "(Within Target)" : "(EXCEEDS TARGET DROP!)";
   dropStatusEl.className = percentDrop <= maxDropTarget ? "status-ok" : "status-warn";
 
-  // Mathematical Derivations
   document.getElementById('calcColdVoc').textContent = 
     `${arrayVoc.toFixed(1)} V × (1 + (${deltaTemp}°${currentTempUnit} × ${tempCoeff}% / 100)) = ${arrayVocCold.toFixed(1)} V at ${minTemp}°${currentTempUnit}`;
 
@@ -399,7 +603,7 @@ function calculateSystem() {
   document.getElementById('calcWireDrop').textContent = 
     `${arrayIsc.toFixed(1)} A × (${totalWireLengthFt} ft / 1000 × ${ohmPer1000Ft} Ω) = ${voltageDrop.toFixed(2)} V drop (${percentDrop.toFixed(2)}%)`;
 
-  // --- Update Visual Interactive SVG Diagram ---
+  // Visual Interactive SVG Diagram Updates
   document.getElementById('svgArrayPower').textContent = `${totalArrayWatts} W`;
   document.getElementById('svgArrayVolts').textContent = `${arrayVoc.toFixed(1)} V`;
   document.getElementById('svgBatVolts').textContent = `${batVolts} V`;
@@ -408,7 +612,6 @@ function calculateSystem() {
   document.getElementById('svgAcLoad').textContent = `${acRunningWatts} W AC`;
   document.getElementById('svgDcLoad').textContent = `${Math.round(dcDailyWh / 24)} W DC avg`;
 
-  // Overload highlighting logic for MPPT node
   const mpptBox = document.getElementById('svgMpptBox');
   const mpptStatus = document.getElementById('svgMpptStatus');
   if (arrayVocCold > mpptMaxVolts || arrayIsc > mpptMaxAmps) {
@@ -419,7 +622,6 @@ function calculateSystem() {
     mpptStatus.textContent = 'OK';
   }
 
-  // Overload highlighting logic for Inverter node
   const invBox = document.getElementById('svgInverterBox');
   const invStatus = document.getElementById('svgInverterStatus');
   if (acRunningWatts > inverterWatts || acSurgeWatts > inverterSurge) {
@@ -430,9 +632,13 @@ function calculateSystem() {
     invStatus.textContent = 'OK';
   }
 
-  // Reveal Output Container & Visualizer
   document.getElementById('placeholderText').style.display = 'none';
   document.getElementById('diagramCard').style.display = 'block';
+  document.getElementById('sim24Card').style.display = 'block';
+  document.getElementById('stressTestCard').style.display = 'block';
   document.getElementById('results').style.display = 'block';
   document.getElementById('derivationSection').style.display = 'block';
+
+  render24HourSimulation(totalArrayWatts, sunHours, efficiency, usableBatteryWh, totalDailyLoadWh);
+  updateStressTest();
 }
